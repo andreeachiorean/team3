@@ -33,9 +33,12 @@ plt.savefig('Life_expectancy.png')
 plt.show()
 
 numeric_cols = df.select_dtypes(include=[np.number]).columns
-# 3. Define the grid size (e.g., 3 columns per row)
+
 n_cols = 3
 n_rows = (len(numeric_cols) + n_cols - 1) // n_cols
+
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, n_rows * 3))
+axes = axes.flatten()
 
 for i, col in enumerate(numeric_cols):
     sns.boxplot(x=df[col], ax=axes[i], color='lightgreen', fliersize=5)
