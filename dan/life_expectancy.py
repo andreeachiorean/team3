@@ -2,6 +2,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import numpy as np
+# Changed import to avoid keras.src internal reference errors
+from sklearn.metrics import accuracy_score, r2_score, mean_absolute_error
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from keras import Sequential, Input
+from keras.layers import Dense
+from keras.utils import to_categorical
 
 data = pd.read_csv(r"C:\Users\daxen\Desktop\suport curs\team3\data\Life_Expectancy_Data_new.csv")
 data.columns = data.columns.str.strip()
@@ -50,6 +57,95 @@ df_cleaned.to_csv("Cleaned_Life_Expectancy_Data.csv", index=False)
 print("\n---------coloane ramase cu randuri nule dupa curatare data frame---------")
 missing = df_cleaned.isnull().sum()
 print(missing[missing > 0])
+
+df_cleaned = df_cleaned.fillna(df_cleaned.mean(numeric_only=True)) # inlocuim valorile nule cu media cloanei, pentru a putea rula modeul
+
+output_col = 'Life expectancy'
+input_col = [coloana for coloana in df_cleaned.columns if coloana not in [output_col,'Country', 'Year', 'Status']]
+X = df_cleaned[input_col].values
+y = df_cleaned[output_col].values
+
+years = sorted(df_cleaned['Year'].unique())
+train_years = years[:12]
+test_years = years[12:]
+
+train_df = df_cleaned[df_cleaned['Year'].isin(train_years)]
+test_df = df_cleaned[df_cleaned['Year'].isin(test_years)]
+
+X_train = train_df[input_col].values
+y_train = train_df[output_col].values
+X_test = test_df[input_col].values
+y_test = test_df[output_col].values
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+model = Sequential([
+    Input(shape=(X_train_scaled.shape[1],)),
+    Dense(64, activation='relu'),
+    Dense(32, activation='relu'),
+    Dense(16, activation='relu'),
+    Dense(1,activation='linear')
+])
+
+model.compile(
+    loss='mse',
+    optimizer='adam',
+    metrics=['mae']
+)
+
+
+history = model.fit(
+    X_train_scaled, y_train,
+    validation_data=(X_test_scaled, y_test),
+    epochs=100,
+    batch_size=32,
+    verbose=1
+)
+
+plt.figure()
+
+plt.subplot(1, 2, 1)
+plt.plot(history.history['loss'], label='Train Loss (MSE)')
+plt.plot(history.history['val_loss'], label='Val Loss (MSE)')
+plt.title('Model Loss Progression')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(history.history['mae'], label='Train MAE')
+plt.plot(history.history['val_mae'], label='Val MAE')
+plt.title('Mean Absolute Error (Years)')
+plt.xlabel('Epoch')
+plt.ylabel('Error in Years')
+plt.legend()
+plt.show()
+
+
+predictions = model.predict(X_test_scaled).flatten()
+mae = mean_absolute_error(y_test, predictions)
+
+
+print(f"\n----------------Performanta Model---------------------")
+print(f"Mean Absolute Error: {mae:.2f} years")
+
+
+countries_test = test_df['Country'].values
+year_test = test_df['Year'].values
+compare = pd.DataFrame({
+    'Country': countries_test,
+    'Year': year_test,
+    'Actual': y_test,
+    'Predicted': predictions
+})
+
+print("\nSample de predictii:")
+print(compare.head(15))
+
+
+
 # print("-------------------------------------")
 # fig = plt.figure(figsize=(10, 8))
 # ax = fig.add_subplot(111, projection='3d')
