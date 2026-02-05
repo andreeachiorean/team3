@@ -5,8 +5,9 @@ import numpy as np
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from keras import Sequential, Input
-from keras.layers import Dense
-from keras.utils import to_categorical
+from keras.layers import Dense, LeakyReLU
+
+
 
 data = pd.read_csv(r"C:\Users\daxen\Desktop\suport curs\team3\data\Life_Expectancy_Data_new.csv")
 data.columns = data.columns.str.strip()
@@ -94,10 +95,10 @@ X_test_scaled = scaler.transform(X_test)
 #xgboost sau gradient boost ca modele
 model = Sequential([
     Input(shape=(X_train_scaled.shape[1],)),
-    Dense(64, activation='relu'),
-    Dense(32, activation='relu'),
-    Dense(16, activation='relu'),
-    Dense(1,activation='linear')
+    Dense(128),LeakyReLU(alpha=0.01),
+    Dense(64),LeakyReLU(alpha=0.01),
+    Dense(16),LeakyReLU(alpha=0.01),
+    Dense(1, activation='linear')
 ])
 
 model.compile(
@@ -105,7 +106,6 @@ model.compile(
     optimizer='adam',
     metrics=['mae']
 )
-
 
 history = model.fit(
     X_train_scaled, y_train,
