@@ -3,33 +3,34 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 
-
-
 data = pd.read_csv(r"C:\Users\daxen\Desktop\suport curs\team3\data\Life_Expectancy_Data_new.csv")
 data.columns = data.columns.str.strip()
-missing = data.isnull().sum()
-print(missing[missing > 0])
 
 df = pd.DataFrame(data)
-exclude = ['country', 'year', 'status']
-cols_to_check = [c for c in df.columns if c.lower() not in exclude]
-rezultat = []
+exclude = ['Country', 'Year', 'Status']
 
+cols_to_check = []
+for c in df.columns:
+    if c not in exclude:
+        cols_to_check.append(c)
+
+rezultat = []
 for country, group in df.groupby('Country'):
     for col in cols_to_check:
         if group[col].isnull().all():
             rezultat.append({'Country': country, 'Empty_Column': col})
+
 print("--------detalii date lipsa--------")
+
 if rezultat:
     summary_df = pd.DataFrame(rezultat).drop_duplicates()
     summary_df = summary_df.sort_values(by=['Country', 'Empty_Column'])
-    print(f"sunt gasite {len(summary_df)} countries cu date complet lipsa pentru toti anii:")
+    print(f"sunt gasite {len(summary_df)} combinatii 'countries-empty_col' cu date complet lipsa pentru toti anii:")
     print(summary_df.to_string(index=False))
-    print("\n--- countries unice afectate ---")
+    print("\n----------------countries unice afectate -----------------")
     unique_countries = summary_df['Country'].unique()
     unique_countries.sort()
-    print(f"Total countries cu date lipsa complet pentru toti anii pentru anumite coloane: {len(unique_countries)}")
-    print("Lista countries:")
+    print(f"Numar countries cu date lipsa complet pentru toti anii pentru anumite coloane: {len(unique_countries)}. Acestea sunt:")
     for country in unique_countries:
         print(f"- {country}")
 no_data_countries = [item['Country'] for item in rezultat]
@@ -46,6 +47,9 @@ print(f"-numar countries sterse: {df['Country'].nunique() - df_cleaned['Country'
 print(f"-numar countries unice ramase: {df_cleaned['Country'].nunique()}")
 
 df_cleaned.to_csv("Cleaned_Life_Expectancy_Data.csv", index=False)
+print("\n---------coloane ramase cu randuri nule dupa curatare data frame---------")
+missing = df_cleaned.isnull().sum()
+print(missing[missing > 0])
 # print("-------------------------------------")
 # fig = plt.figure(figsize=(10, 8))
 # ax = fig.add_subplot(111, projection='3d')
