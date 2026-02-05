@@ -104,8 +104,6 @@ history = model.fit(
     verbose=1
 )
 
-
-
 plt.figure()
 
 plt.subplot(1, 2, 1)
@@ -128,11 +126,11 @@ plt.show()
 
 predictions = model.predict(X_test_scaled).flatten()
 mae = mean_absolute_error(y_test, predictions)
-r2 = r2_score(y_test, predictions)
+
 
 print(f"\n----------------Performanta Model---------------------")
 print(f"Mean Absolute Error: {mae:.2f} years")
-print(f"R2 Score: {r2:.2f}")
+
 
 countries_test = test_df['Country'].values
 year_test = test_df['Year'].values
