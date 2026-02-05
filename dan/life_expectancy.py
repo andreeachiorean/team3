@@ -2,9 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import numpy as np
-# Changed import to avoid keras.src internal reference errors
-from sklearn.metrics import accuracy_score, r2_score, mean_absolute_error
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from keras import Sequential, Input
 from keras.layers import Dense
@@ -44,7 +42,8 @@ no_data_countries = [item['Country'] for item in rezultat]
 no_data_countries_unique = list(set(no_data_countries))
 
 df_cleaned = df[~df['Country'].isin(no_data_countries_unique)].copy()
-
+print("\n-------------data cleaned info()---------------")
+df_cleaned.info()
 print("\n---------rezulate curatare data frame---------")
 print(f"-numar initial de randuri: {len(df)}")
 print(f"-numar randuri sterse: {len(df) - len(df_cleaned)}")
@@ -58,7 +57,19 @@ print("\n---------coloane ramase cu randuri nule dupa curatare data frame-------
 missing = df_cleaned.isnull().sum()
 print(missing[missing > 0])
 
-df_cleaned = df_cleaned.fillna(df_cleaned.mean(numeric_only=True)) # inlocuim valorile nule cu media cloanei, pentru a putea rula modeul
+df_cor = [e for e in df_cleaned.columns if e not in ['Country', 'Year', 'Status']]
+# Calculam matricea de corelatie
+correlation_matrix = df_cleaned[df_cor].corr()
+
+#Graficul matricei de corelatie
+plt.figure(figsize=(16,12))
+sns.heatmap(correlation_matrix,annot=True, fmt=".2f", cmap="coolwarm",
+            center=0, square = True, linewidths =0.5, cbar_kws={"shrink": .8})
+plt.title("Matricea de corelatie", fontsize = 16, fontweight = 'bold')
+plt.tight_layout()
+plt.show()
+
+df_cleaned = df_cleaned.fillna(df_cleaned.mean(numeric_only=True)) # inlocuim valorile nule cu media cloanei, pentru a putea rula modeul cu standardscaler
 
 output_col = 'Life expectancy'
 input_col = [coloana for coloana in df_cleaned.columns if coloana not in [output_col,'Country', 'Year', 'Status']]
@@ -66,8 +77,8 @@ X = df_cleaned[input_col].values
 y = df_cleaned[output_col].values
 
 years = sorted(df_cleaned['Year'].unique())
-train_years = years[:12]
-test_years = years[12:]
+train_years = years[:12] #80% din seriile anuale 2000-2015
+test_years = years[12:] #20% din seriile anuale 2000-2015
 
 train_df = df_cleaned[df_cleaned['Year'].isin(train_years)]
 test_df = df_cleaned[df_cleaned['Year'].isin(test_years)]
@@ -80,7 +91,7 @@ y_test = test_df[output_col].values
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
-
+#xgboost sau gradient boost ca modele
 model = Sequential([
     Input(shape=(X_train_scaled.shape[1],)),
     Dense(64, activation='relu'),
@@ -99,7 +110,7 @@ model.compile(
 history = model.fit(
     X_train_scaled, y_train,
     validation_data=(X_test_scaled, y_test),
-    epochs=100,
+    epochs=40,
     batch_size=32,
     verbose=1
 )
@@ -126,10 +137,12 @@ plt.show()
 
 predictions = model.predict(X_test_scaled).flatten()
 mae = mean_absolute_error(y_test, predictions)
+r2 = r2_score(y_test, predictions)
 
 
 print(f"\n----------------Performanta Model---------------------")
-print(f"Mean Absolute Error: {mae:.2f} years")
+print(f"Mean Absolute Error (prezicere speranta de viata cu eroare de): {mae:.2f} years")
+print(f"R2 Score: {r2:.2f}")
 
 
 countries_test = test_df['Country'].values
@@ -141,8 +154,8 @@ compare = pd.DataFrame({
     'Predicted': predictions
 })
 
-print("\nSample de predictii:")
-print(compare.head(15))
+print("\nSample de 30 predictii:")
+print(compare.head(30))
 
 
 
