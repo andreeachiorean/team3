@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import numpy as np
 from keras.src.layers import Dropout
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
@@ -9,8 +8,6 @@ from keras import Sequential, Input
 from keras.layers import Dense, LeakyReLU
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-
-
 
 data = pd.read_csv(r"C:\Users\daxen\Desktop\suport curs\team3\data\Life_Expectancy_Data_new.csv")
 data.columns = data.columns.str.strip()
@@ -25,7 +22,7 @@ for country, group in df.groupby('Country'):
         if group[col].isnull().all():
             rezultat.append({'Country': country, 'Empty_Column': col})
 
-print("--------detalii date lipsa--------")
+print("n\--------detalii date lipsa--------")
 if rezultat:
     summary_df = pd.DataFrame(rezultat).drop_duplicates()
     summary_df = summary_df.sort_values(by=['Country', 'Empty_Column'])
@@ -35,7 +32,7 @@ if rezultat:
 no_data_countries_unique = list(set([item['Country'] for item in rezultat]))
 df_cleaned = df[~df['Country'].isin(no_data_countries_unique)].copy()
 
-# --- 2. MATRICEA DE CORELAȚIE ---
+# ---------------correlation matric----------------
 df_cor = [e for e in df_cleaned.columns if e not in ['Country', 'Year', 'Status']]
 correlation_matrix = df_cleaned[df_cor].corr()
 
@@ -70,7 +67,7 @@ def build_model(input_shape):
 
 # EXPERIMENT 1: MODEL FĂRĂ CLUSTERING (BASELINE)
 # =======================================================
-print("\n>>> Rulare Model 1: Fara Clustering (Baseline)...")
+print("\n>> Rulare Model 1: Fara clustering (Baseline)...")
 input_col_1 = [c for c in df_cleaned.columns if c not in [output_col, 'Country', 'Year', 'Status']]
 
 train_df_1 = df_cleaned[df_cleaned['Year'].isin(train_years)]
@@ -97,7 +94,7 @@ r2_baseline = r2_score(y_test_1, pred1)
 #EXPERIMENT 2: OPTIMIZARE NUMAR DE CLUSTERE (gasire numar optim de clustere)
 #==========================================================================
 
-print("\n>>> Incepere simulari pentru numarul de clustere...")
+print("\n>> Simulari pentru numarul optim de clustere...")
 df_feat = df_cleaned.copy()
 cols_economy = ['GDP_new', 'percentage expenditure', 'Total expenditure']
 cols_health = ['BMI', 'under-five deaths', 'Hepatitis B', 'Diphtheria', 'HIV/AIDS', 'Polio']
@@ -137,7 +134,6 @@ for k in cluster_range:
     mae_k = mean_absolute_error(y_test_2, pred_sim)
     r2_k = r2_score(y_test_2, pred_sim)
 
-    # Verificam daca ambele conditii de imbunatatire sunt indeplinite
     improved = "DA" if (mae_k < mae_baseline and r2_k > r2_baseline) else "NU"
     sim_results.append({'k': k, 'MAE': mae_k, 'R2': r2_k, 'Improved': improved})
     print(f"Clusters: {k} | MAE: {mae_k:.4f} | R2: {r2_k:.4f} | Imbunatatit: {improved}")
@@ -145,17 +141,22 @@ for k in cluster_range:
 # --------------rezultate optimizare---------------------------
 sim_df = pd.DataFrame(sim_results)
 
-# Gasim k minim care imbunatateste ambele metrice
-optimal_k_row = sim_df[sim_df['Improved'] == 'DA'].first_valid_index()
+optimal_k_row_idx = sim_df[sim_df['Improved'] == 'DA'].first_valid_index()
 
-if optimal_k_row is not None:
-    best_k = sim_df.loc[optimal_k_row, 'k']
+if optimal_k_row_idx is not None:
+    best_k = int(sim_df.loc[optimal_k_row_idx, 'k'])
+    mae_optimizat = sim_df.loc[optimal_k_row_idx, 'MAE']
+    r2_optimizat = sim_df.loc[optimal_k_row_idx, 'R2']
     print(f"\nNUMARUL MINIM DE CLUSTERE PENTRU IMBUNATATIRE ESTE: {best_k}")
 else:
-    best_k = 3  # revenire la valoarea ta initiala daca nicio simulare nu a batut modelul simplu
-    print("\n!!! Nicio configuratie nu a imbunatatit ambele metrice simultan in aceasta rulare.")
 
-# Grafic mae si mse
+    best_idx = sim_df['MAE'].idxmin()
+    best_k = int(sim_df.loc[best_idx, 'k'])
+    mae_optimizat = sim_df.loc[best_idx, 'MAE']
+    r2_optimizat = sim_df.loc[best_idx, 'R2']
+    print("\n!!! Nicio configuratie nu a imbunatatit ambele metrice simultan. Se foloseste cel mai bun MAE gasit.")
+
+
 plt.figure(figsize=(12, 5))
 plt.subplot(1, 2, 1)
 plt.plot(sim_df['k'], sim_df['MAE'], marker='o', label='MAE Model Clustering')
@@ -177,9 +178,6 @@ plt.show()
 kmeans_final = KMeans(n_clusters=best_k, random_state=42, n_init=10)
 df_feat['Cluster_ID'] = kmeans_final.fit_predict(df_feat[['dim_economy', 'dim_health', 'dim_schooling']].values)
 
-# ---grafic 3d clusetere--
-kmeans_final = KMeans(n_clusters=best_k, random_state=42, n_init=10)
-df_feat['Cluster_ID'] = kmeans_final.fit_predict(df_feat[['dim_economy', 'dim_health', 'dim_schooling']].values)
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111, projection='3d')
 scatter = ax.scatter(df_feat['dim_economy'],
@@ -188,8 +186,8 @@ scatter = ax.scatter(df_feat['dim_economy'],
                      c=df_feat['Cluster_ID'],
                      cmap='viridis', s=40, alpha=0.7)
 ax.set_xlabel('Dimensiune Economie (PCA 1)', fontsize=10, labelpad=10)
-ax.set_ylabel('Dimensiune Sănătate (PCA 1)', fontsize=10, labelpad=10)
-ax.set_zlabel('Dimensiune Școlarizare (PCA 1)', fontsize=10, labelpad=10)
+ax.set_ylabel('Dimensiune Sanatate (PCA 1)', fontsize=10, labelpad=10)
+ax.set_zlabel('Dimensiune Scolarizare (PCA 1)', fontsize=10, labelpad=10)
 
 plt.title(f'Clustering best k={best_k} - Vizualizare 3D', fontsize=14)
 fig.colorbar(scatter, ax=ax, label='ID Cluster', shrink=0.5)
@@ -217,6 +215,46 @@ table.scale(1.2, 2.8)
 plt.title(f"Repartizarea Tarilor pe cele {best_k} Clustere", fontsize=14, pad=20)
 plt.show()
 
-for i in range(best_k):
-    print(f"\nTari in Cluster {i}:")
-    print(", ".join(cluster_mapping[cluster_mapping['Cluster_ID'] == i]['Country'].tolist()))
+# ------comparatie grafica MAE vs R2-------------
+metrics_data = {
+    'Metric': ['MAE', 'MAE', 'R2 Score', 'R2 Score'],
+    'Method': ['Fara Clustere', 'Cu Clustere', 'Fara Clustere', 'Cu Clustere'],
+    'Value': [mae_baseline, mae_optimizat, r2_baseline, r2_optimizat]
+}
+
+metrics_df = pd.DataFrame(metrics_data)
+
+plt.figure(figsize=(12, 6))
+
+
+plt.subplot(1, 2, 1)
+sns.barplot(
+    data=metrics_df[metrics_df['Metric'] == 'MAE'],
+    x='Method',
+    y='Value',
+    hue='Method',
+    palette='viridis',
+    legend=False
+)
+plt.title('Comparatie MAE (Mai mic = mai bine)')
+plt.ylabel('Ani (Eroare Medie)')
+
+
+plt.subplot(1, 2, 2)
+sns.barplot(
+    data=metrics_df[metrics_df['Metric'] == 'R2 Score'],
+    x='Method',
+    y='Value',
+    hue='Method',
+    palette='magma',
+    legend=False
+)
+plt.title('Comparatie R2 Score (Mai mare = mai bine)')
+plt.ylabel('Scor R2')
+
+plt.tight_layout()
+plt.show()
+
+print(f"\n>> REZULTATE FINALE COMPARATIVE:")
+print(f"Baseline (Fara Clustere): MAE = {mae_baseline:.2f}, R2 = {r2_baseline:.2f}")
+print(f"Optimizat (Cu {best_k} Clustere): MAE = {mae_optimizat:.2f}, R2 = {r2_optimizat:.2f}")

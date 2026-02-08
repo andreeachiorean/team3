@@ -31,9 +31,18 @@ cluster_stats = df_feat.groupby('Cluster_ID')['Life expectancy'].mean().sort_val
 color_map_dict = {cluster_stats.index[0]: 'red', cluster_stats.index[1]: 'yellow', cluster_stats.index[2]: 'green'}
 ordered_colors = [color_map_dict[i] for i in range(3)]
 custom_cmap = ListedColormap(ordered_colors)
-
 tari_cluster = df_feat.groupby('Country')['Cluster_ID'].first().reset_index()
 
+# ------vizualizare 3 clustere 3D ---
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection='3d')
+scatter = ax.scatter(df_feat['dim_economy'], df_feat['dim_health'], df_feat['dim_schooling'],
+                     c=df_feat['Cluster_ID'], cmap=custom_cmap, s=50, alpha=0.7, edgecolors='w')
+ax.set_xlabel('Dimensiune Economie (PCA 1)', fontsize=10, labelpad=10)
+ax.set_ylabel('Dimensiune Sanatate (PCA 1)', fontsize=10, labelpad=10)
+ax.set_zlabel('Dimensiune Scolarizare (PCA 1)', fontsize=10, labelpad=10)
+ax.set_title('Vizualizare 3D: Cele 3 Clustere (Economie, Sanatate, Scoala)')
+plt.show()
 #--------------corectii nume tari sa nu apara gri pe harta ---------------
 nume_corectate = {
     'United States of America': 'United States',
