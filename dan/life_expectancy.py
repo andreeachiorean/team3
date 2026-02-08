@@ -162,7 +162,7 @@ print(f"R2 Score: {r2:.2f}")
 
 #-----------XGBOOST: Print rezultate XGBoost ###
 print(f"\n----------------Performanta Model XGBoost---------------------")
-print(f"Mean Absolute Error: {mae_xgb:.2f} years")
+print(f"Mean Absolute Error(prezicere speranta de viata cu eroare de): {mae_xgb:.2f} years")
 print(f"R2 Score: {r2_xgb:.2f}")
 #-----------------------------------------------------------
 
