@@ -6,8 +6,7 @@ from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from keras import Sequential, Input
 from keras.layers import Dense, LeakyReLU
-
-
+import xgboost as xgb
 
 data = pd.read_csv(r"C:\Users\daxen\Desktop\suport curs\team3\data\Life_Expectancy_Data_new.csv")
 data.columns = data.columns.str.strip()
@@ -92,7 +91,19 @@ y_test = test_df[output_col].values
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
-#xgboost sau gradient boost ca modele
+
+###------------------XGBOOST------------------------
+xgb_model = xgb.XGBRegressor(
+    n_estimators=100,
+    learning_rate=0.1,
+    max_depth=5,
+    objective='reg:squarederror',
+    random_state=42
+)
+xgb_model.fit(X_train_scaled, y_train)
+#------------------------------------------------------------------------------------------
+
+#------------------Keras sequential--------------
 model = Sequential([
     Input(shape=(X_train_scaled.shape[1],)),
     Dense(128),LeakyReLU(alpha=0.01),
@@ -139,10 +150,21 @@ predictions = model.predict(X_test_scaled).flatten()
 mae = mean_absolute_error(y_test, predictions)
 r2 = r2_score(y_test, predictions)
 
+### --------------XGBOOST: Predictii si Metrici pentru-------------------
+predictions_xgb = xgb_model.predict(X_test_scaled)
+mae_xgb = mean_absolute_error(y_test, predictions_xgb)
+r2_xgb = r2_score(y_test, predictions_xgb)
+#-----------------------------------------------------------
 
-print(f"\n----------------Performanta Model---------------------")
-print(f"Mean Absolute Error (prezicere speranta de viata cu eroare de): {mae:.2f} years")
+print(f"\n----------------Performanta Model Keras (DL)---------------------")
+print(f"Mean Absolute Error(prezicere speranta de viata cu eroare de): {mae:.2f} years")
 print(f"R2 Score: {r2:.2f}")
+
+#-----------XGBOOST: Print rezultate XGBoost ###
+print(f"\n----------------Performanta Model XGBoost---------------------")
+print(f"Mean Absolute Error: {mae_xgb:.2f} years")
+print(f"R2 Score: {r2_xgb:.2f}")
+#-----------------------------------------------------------
 
 
 countries_test = test_df['Country'].values
@@ -151,12 +173,13 @@ compare = pd.DataFrame({
     'Country': countries_test,
     'Year': year_test,
     'Actual': y_test,
-    'Predicted': predictions
+    'Keras_Pred': predictions,
+    #  Adaugare XGBOOST in comparatie
+    'XGB_Pred': predictions_xgb
 })
 
-print("\nSample de 30 predictii:")
+print("\nSample de 30 predictii (Comparatie Keras vs XGBoost):")
 print(compare.head(30))
-
 
 
 # print("-------------------------------------")
