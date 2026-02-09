@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import keras_tuner as kt
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 from keras import Sequential, Input
 from keras.layers import Dense, ReLU, Dropout
@@ -176,3 +177,44 @@ print(f"Within ±1 year: {within_1y:.1f}%")
 print(f"Within ±2 years: {within_2y:.1f}%")
 print(f"Max Error: {max_err:.2f} years")
 print(f"Country: {test_df.iloc[idx_max]['Country']} | Year: {test_df.iloc[idx_max]['Year']}")
+
+
+# =======================
+# PLOTS: MLP RandomSearch
+# =======================
+actual = y_test
+preds = pred
+err = preds - actual
+
+# --- Scatter: Predictii vs Reale ---
+plt.figure(figsize=(8, 6))
+plt.scatter(actual, preds, alpha=0.6)
+mn = float(min(actual.min(), preds.min()))
+mx = float(max(actual.max(), preds.max()))
+plt.plot([mn, mx], [mn, mx], "r--", linewidth=2)
+
+plt.title(f"MLP RandomSearch: Predictii vs Reale\nR² = {r2:.3f}, MAE = {mae:.2f}")
+plt.xlabel("Valori Reale ('Life Expectancy')")
+plt.ylabel("Predictii MLP")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig("mlp_randomsearch_pred_vs_real.png", dpi=200)
+plt.show()
+
+# --- Boxplot: erori ---
+plt.figure(figsize=(7, 6))
+bp = plt.boxplot(err, labels=["MLP RandomSearch"], showfliers=True)
+
+plt.axhline(0, linestyle="--", linewidth=2)
+mean_err = float(np.mean(err))
+plt.text(
+    1.02, mean_err, f"Mean: {mean_err:.2f}",
+    color="red", fontsize=11, fontweight="bold"
+)
+
+plt.title("Distributia erorilor: MLP RandomSearch")
+plt.ylabel("Eroare (Predictie - Real)")
+plt.grid(True, axis="y", alpha=0.3)
+plt.tight_layout()
+plt.savefig("mlp_randomsearch_error_boxplot.png", dpi=200)
+plt.show()
