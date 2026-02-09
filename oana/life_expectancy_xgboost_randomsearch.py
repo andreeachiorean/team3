@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import ParameterSampler
 from sklearn.metrics import (
@@ -13,6 +14,16 @@ from sklearn.metrics import (
 # ======================================================
 # 0) SETARI
 # ======================================================
+"""
+RANDOM_STATE: reproducibilitate (aceleași combinații random, aceleași rezultate).
+
+N_TRIALS: câte configurații de hiperparametri testezi.
+
+MAX_ROUNDS: maximul de boosting rounds (număr de “copaci” în boosting).
+
+EARLY_STOPPING: oprește antrenarea dacă 50 runde la rând nu se îmbunătățește scorul pe validation.
+
+"""
 RANDOM_STATE = 42
 np.random.seed(RANDOM_STATE)
 
@@ -111,15 +122,20 @@ dtest  = xgb.DMatrix(X_test,  label=y_test)
 # 4) RANDOM SEARCH SPACE
 #    (in train API, learning_rate = eta, reg_alpha = alpha, reg_lambda = lambda)
 # ======================================================
+"""
+param_dist este un grid discret (liste de valori).
+
+ParameterSampler alege N_TRIALS combinații aleatorii (fără să le încerce pe toate ca GridSearch).
+"""
 param_dist = {
-    "eta": [0.01, 0.02, 0.03, 0.05, 0.08, 0.1],
-    "max_depth": [2, 3, 4, 5, 6],
-    "min_child_weight": [1, 2, 3, 5, 8],
-    "subsample": [0.6, 0.7, 0.8, 0.9, 1.0],
-    "colsample_bytree": [0.6, 0.7, 0.8, 0.9, 1.0],
-    "gamma": [0.0, 0.1, 0.2, 0.5, 1.0],
-    "alpha": [0.0, 1e-4, 1e-3, 1e-2, 0.1],
-    "lambda": [0.5, 1.0, 2.0, 5.0, 10.0],
+    "eta": [0.01, 0.02, 0.03, 0.05, 0.08, 0.1], #learning rate
+    "max_depth": [2, 3, 4, 5, 6], #Adâncimea maximă a fiecărui copac.
+    "min_child_weight": [1, 2, 3, 5, 8], #Cantitatea minimă de “informație” (sumă de hessian) necesară într-un nod ca să fie împărțit.
+    "subsample": [0.6, 0.7, 0.8, 0.9, 1.0], #Procentul de rânduri folosite pentru fiecare copac.
+    "colsample_bytree": [0.6, 0.7, 0.8, 0.9, 1.0], #Procentul de features folosite pentru fiecare copac.
+    "gamma": [0.0, 0.1, 0.2, 0.5, 1.0], #Pierderea minimă necesară pentru a face un split nou.
+    "alpha": [0.0, 1e-4, 1e-3, 1e-2, 0.1], #L1 (reg_alpha)
+    "lambda": [0.5, 1.0, 2.0, 5.0, 10.0], #lambda = L2 (reg_lambda)
 }
 
 samples = list(ParameterSampler(param_dist, n_iter=N_TRIALS, random_state=RANDOM_STATE))
@@ -249,3 +265,44 @@ compare = pd.DataFrame({
 
 print("\nSample de 30 predictii:")
 print(compare.head(30))
+
+
+# ==========================
+# PLOTS: XGBoost RandomSearch
+# ==========================
+actual = y_test
+preds = predictions
+err = preds - actual
+
+# --- Scatter: Predictii vs Reale ---
+plt.figure(figsize=(8, 6))
+plt.scatter(actual, preds, alpha=0.6)
+mn = float(min(actual.min(), preds.min()))
+mx = float(max(actual.max(), preds.max()))
+plt.plot([mn, mx], [mn, mx], "r--", linewidth=2)
+
+plt.title(f"XGBoost RandomSearch: Predictii vs Reale\nR² = {r2:.3f}, MAE = {mae:.2f}")
+plt.xlabel("Valori Reale ('Life Expectancy')")
+plt.ylabel("Predictii XGBoost")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig("xgb_randomsearch_pred_vs_real.png", dpi=200)
+plt.show()
+
+# --- Boxplot: erori ---
+plt.figure(figsize=(7, 6))
+plt.boxplot(err, labels=["XGBoost RandomSearch"], showfliers=True)
+
+plt.axhline(0, linestyle="--", linewidth=2)
+mean_err = float(np.mean(err))
+plt.text(
+    1.02, mean_err, f"Mean: {mean_err:.2f}",
+    color="red", fontsize=11, fontweight="bold"
+)
+
+plt.title("Distributia erorilor: XGBoost RandomSearch")
+plt.ylabel("Eroare (Predictie - Real)")
+plt.grid(True, axis="y", alpha=0.3)
+plt.tight_layout()
+plt.savefig("xgb_randomsearch_error_boxplot.png", dpi=200)
+plt.show()
